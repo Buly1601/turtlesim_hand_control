@@ -1,11 +1,25 @@
+#! /usr/bin/env python3
 import cv2
 import mediapipe as mp
+import rospy
+from std_msgs.msg import String
 
 
 class HandTracker():
 
     def __init__(self, mode=False, max_hands=2, detection_con=0.5, model_complexity=1, track_con=0.5):
-        
+
+        # publishers (camera_info topic)
+        self.publisher = rospy.Publisher("camera_info", String, queue_size=10)
+
+        # nodes
+        rospy.init_node("camera_node", anonymous=False)
+
+        # rate
+        self.rate = rospy.Rate(10)
+        rospy.loginfo("Set rate to 10Hz")
+
+        # variables
         self.mode = mode
         self.max_hands = max_hands
         self.detection_con = detection_con
@@ -66,27 +80,34 @@ class HandTracker():
             if abs(self.lm_list[8][2] - self.lm_list[0][2]) >= 150:
                 h = self.finger_down(fingers=[20, 16, 12, 4])
                 if len(set(h)) == 1 and h[0] == True:
-                    print("forward") # TODO send data
+                    print("forward")
+                    self.publisher.publish("forward")
+
             # check if backward command
             elif len(set(self.finger_down(fingers=[4, 12, 16, 20]))) == 1 and self.finger_down(fingers=[4, 12, 16, 20])[0] == True:
-                print("backward") # TODO send data
+                print("backward")
+                self.publisher.publish("backward")
+
             # check if turn left command
             elif abs(self.lm_list[20][2] - self.lm_list[0][2]) >= 135:
                 h = self.finger_down(fingers=[8, 16, 12, 4])
                 if len(set(h)) == 1 and h[0] == True:  
-                    print("left") # TODO send data
+                    print("left")
+                    self.publisher.publish("left")
+
             # check if turn right command
             elif abs(self.lm_list[4][2] - self.lm_list[0][2]) >= 80:
                 h = self.finger_down(fingers=[8, 16, 12, 20])
                 if len(set(h)) == 1 and h[0] == True:  
-                    print("right") # TODO send data
+                    print("right")
+                    self.publisher.publish("right")
 
 
 def main():
     cap = cv2.VideoCapture(0)
     tracker = HandTracker()
 
-    while True:
+    while not rospy.on_shutdown():
         _, image = cap.read()
         image = tracker.hand_finder(image)
         tracker.position_finder(image)
